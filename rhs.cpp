@@ -1,4 +1,18 @@
-#include <iostream>
+/*****************************************
+              buildSystem.cpp
+
+  Function to compute derivatives of a system of differential equations.
+  Used in simulating collective abtibiotic resistance.
+
+  Auke van der Meij
+  Kris Veeken
+
+  Project C++ for biologists
+
+  21/12/2018
+
+  ***************************************/
+
 #include <vector>
 #include <exception>
 #include <cstdlib>
@@ -23,7 +37,7 @@ void rhs(const double &t, 		// current time
 	 const std::vector<double> &x, 	// current variables
 	 std::vector<double> &dxdt) 	// (empty) vector that recieves values of derivatives at time t
 {
-	//calculate rhs of Xs and Ys
+	//calculate derivatives of Xs and Ys
 	if (x[0] != 0.0) {
 		dxdt[0] = r * x[2] / (kz + x[2]) * hy / (hy + x[4]) * x[0] 
 							            - x[0];
@@ -34,7 +48,7 @@ void rhs(const double &t, 		// current time
 		dxdt[0] = 0.0;
 		dxdt[4] = 0.0;
 	}
-	//calculate rhs of Xr and Yr
+	//calculate derivatives of Xr and Yr
 	if (x[1] != 0.0) {
 		dxdt[1] = eta * r * x[2] / (kz + x[2]) 
 				  * hy / (hy + x[5]) * x[1] - x[1];
@@ -45,24 +59,17 @@ void rhs(const double &t, 		// current time
 		dxdt[1] = 0.0;
 		dxdt[5] = 0.0;
 	}
-	// rhs of z
+
+	// derivative of Z
 	dxdt[2] = /*(1.0 - x[2])*/ - c * r * x[2] / (kz + x[2])
 		* (x[0] * hy / (hy + x[4]) + x[1] * hy / (hy + x[5]));  
-// rhs of Ym
-	/*
-	if(std::isnan(dxdt[0] + dxdt[1] / x[0] + x[1] - 1)){
-		std::cout << dxdt[0] << " + " << dxdt[1] << std::endl
-			<< x[0] << " + " <<  x[1] << " - 1" << std::endl;
-		throw(std::runtime_error("dYm became NaN.\n"));
-	}
-	*/
-
 	
+	// derivative of Ym
 	if(x[0] + x[1] < 1.0) {
 		dxdt[3] = /*1.0 / (1.0 - x[0] - x[1])*/
 			- p * (x[0] * (x[3] - x[4]) + x[1] * (x[3] - x[5]))
 			/ (1.0 - x[0] - x[1])
 			/*- x[3]*/ - x[3] * (dxdt[0] + dxdt[1]) / (x[0] + x[1] - 1.0);
 	}
-	else dxdt[3] = 0.0;
+	else dxdt[3] = 0.0; // this was for debugging 
 }

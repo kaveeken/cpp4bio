@@ -1,0 +1,17 @@
+# make this file program-readable with the following bash command:
+# sed '/#/d' ../$fileName > config.txt
+# or just delete every line with a # manually
+#iN: matrix size
+12
+#tEnd: simulation time
+300.0
+#dtSav: write interval (maximum tEnd/22)
+15.0
+#diffX: bacterial diffusion speed per time
+0.1
+#diffY: Cm diffusion speed per time
+0.5
+#diffZ: resource diffusion speed per time
+2.0
+#iPopCol: populated cluster size(sort of) in initial distribution
+3

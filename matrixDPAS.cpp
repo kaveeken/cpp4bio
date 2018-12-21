@@ -1,3 +1,18 @@
+/*****************************************
+              matrixDPAS.cpp
+
+  Function that implements Dormand-Prince integration on a matrix.
+  Used in simulating collective abtibiotic resistance.
+
+  Auke van der Meij
+  Kris Veeken
+
+  Project C++ for biologists
+
+  21/12/2018
+
+  ***************************************/
+
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -18,8 +33,8 @@ const double kdMinH      = 1.0e-6; 	// minimum step size
 const double lowBound 	 = 1.0e-5;
 
 // for optimizing the number of vector instantiations, these are taken out of function body 
-// and shared in project.h 
-// saves ~30% at runtime
+// and shared in project.h 	
+// appears to save ~30% at runtime
 std::vector<double> x(nvar);
 std::vector<double> xtmp(nvar);  
 std::vector<double> dxdtA(nvar);
@@ -33,17 +48,18 @@ std::vector<double> xHi(nvar);
 std::vector<double> xLo(nvar);
 
 
-
-bool matrixDPAS(double &t, // current time
-	       	std::vector<std::vector<std::vector<double> > > &matX, // matrix to be updated
-		double &h) // time-step size
-// for every element in a matrix,
+// for every element in a matrix, this function:
 // computes the next step of the Dormand-Price routine for numerical integration by updating the given arguments
 // returns false if the error found is too large, in which case it does not update t and x
 // can be optimized by retaining one of the solutions to replace one of the following steps solutions
+bool matrixDPAS(double &t, // current time
+	       	std::vector<std::vector<std::vector<double> > > &matX, // matrix to be updated
+		double &h) // time-step size
 {
 	// is a temporary matrix even needed?
 	std::vector<std::vector<std::vector<double> > > matTmp = matX;
+	
+	// information for locating source of error
 	double errMax = 0.0;
 	int culprit = 0; // variable with biggest error
 	int culpRow = 0; // location of biggest error
@@ -51,6 +67,8 @@ bool matrixDPAS(double &t, // current time
 	// double errMax = 0.0;
 	double valLo = 0.0;
 	double valHi = 0.0;
+
+	// *********** the routine *************
 	for(int row = 0; row < iN; ++row) { // for every row
 		for(int col = 0; col < iN; ++col) { // and every column
 			x = matX[row][col]; // take values from given matrix
@@ -118,7 +136,7 @@ bool matrixDPAS(double &t, // current time
 					   + 125.0 / 192.0	* dxdtD[i] 
 					  - 2187.0 / 6784.0	* dxdtE[i]
 					    + 11.0 / 84.0	* dxdtF[i] );
-			// compute x_hi: solution for error estimation
+			// compute x_hi: solution for error estimation 
 			for(int i = 0; i < nvar; ++i)
 				xHi[i] = x[i] + h 
 				       * ( 5179.0 / 57600.0	* dxdtA[i] 
@@ -128,12 +146,8 @@ bool matrixDPAS(double &t, // current time
 				          + 187.0 / 2100.0 	* dxdtF[i]
 				            + 1.0 / 40.0 	* dxdtG[i] );
 
-			//int culprit = 0;
-			// double errMax = 0.0;
-			//double valLo = 0.0;
-			//double valHi = 0.0;
 			for(int i = 0; i < nvar; ++i) {
-				// error
+				// local error
 				double erri = fabs(0.5 * h * (xLo[i] - xHi[i]))
 					            		   / tolerance;
 				if(erri > errMax){
@@ -145,22 +159,20 @@ bool matrixDPAS(double &t, // current time
 					culpCol = col;
 				}
 			}
-			// cut off dead populations
-			if(xLo[0] < lowBound) {
-				//xLo[4] = 0.0;
+			//prevent concentration from becoming > 100%
+			const double dLimitComp = xLo[0] + xLo[1];
+			if (dLimitComp > 0.99) {
+				xLo[0] /= 1.01 * dLimitComp;
+				xLo[1] /= 1.01 * dLimitComp;
+			}
+			//let population go extinct if below sustainable treshhold
+			if (xLo[0] < lowBound) {
 				xLo[0] = 0.0;
+				xLo[4] = 0.0;
 			}
-			if(xLo[0] >= 1.0){
-				std::cout << "asdsad\n";
-				xLo[0] = 0.99;
-			}
-			if(xLo[1] < lowBound) {
+			if (xLo[1] < lowBound) {
 				xLo[1] = 0.0;
-				//xLo[5] = 0.0;
-			}
-			if(xLo[1] >= 1.0) {
-				xLo[1] = 0.99;
-				std::cout << "asdsad\n";
+				xLo[5] = 0.0;
 			}
 			matTmp[row][col] = xLo;
 		}
@@ -169,13 +181,13 @@ bool matrixDPAS(double &t, // current time
 		// adjust step size
 	const double fct = errMax > 0.0 ? kdSafety / pow(errMax, 1.0 / 5.0) 
 					: kdGrowMax; 
-	if(errMax > 1.0) {
+	if(errMax > 1.0) { // error larger than allowed
 		// reduce size
 		if(fct < kdShrinkMax)
 			h *= kdShrinkMax;
 		else
 			h *= fct;
-		if(h < kdMinH){
+		if(h < kdMinH){ // determined step size is smaller than allowed
 			std::cout << "culprit: " << culprit << ", error: " 
 				     			  << errMax << std::endl
 				<< "valLo: " << valLo << " valHi: " 
@@ -187,8 +199,7 @@ bool matrixDPAS(double &t, // current time
 		}
 		return false; // step rejected
 		
-	} else {
-//		std::cout << "fct: " << fct << std::endl;
+	} else { // error within margin
 		// update solution
 		matX = matTmp;
 		t += h;
